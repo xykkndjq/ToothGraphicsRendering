@@ -1,8 +1,12 @@
-<!DOCTYPE RCC><RCC version="1.0">
-<qresource>
-  <file>gl.fs</file>
-  <file>gl.vs</file>
-  <file>gl2.fs</file>
-  <file>gl2.vs</file>
-</qresource>
+<RCC>
+    <qresource prefix="/">
+        <file>gl.fs</file>
+        <file>gl.vs</file>
+        <file>gl2.fs</file>
+        <file>gl2.vs</file>
+        <file>plane.fs</file>
+        <file>plane.vs</file>
+        <file>lightSpace.fs</file>
+        <file>lightSpace.vs</file>
+    </qresource>
 </RCC>

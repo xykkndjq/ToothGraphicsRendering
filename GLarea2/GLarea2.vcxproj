@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -13,16 +13,16 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B12702AD-ABFB-343A-A199-8E24837244A3}</ProjectGuid>
     <Keyword>Qt4VSv1.0</Keyword>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup Condition="'$(QtMsBuild)'=='' or !Exists('$(QtMsBuild)\qt.targets')">
@@ -30,6 +30,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
@@ -56,8 +57,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_OPENGL_LIB;QT_SERIALPORT_LIB;QT_WIDGETS_LIB;GLAREA2_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtOpenGL;$(QTDIR)\include\QtSerialPort;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;WIN64;GLAREA2_LIB;QT_CORE_LIB;QT_GUI_LIB;QT_OPENGL_LIB;QT_SERIALPORT_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtOpenGL;$(QTDIR)\include\QtSerialPort;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -71,11 +72,11 @@
       <OutputFile>$(OutDir)\$(ProjectName).dll</OutputFile>
       <AdditionalLibraryDirectories>$(QTDIR)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>qtmaind.lib;Qt5Cored.lib;Qt5OpenGLd.lib;opengl32.lib;glu32.lib;Qt5SerialPortd.lib;Qt5Widgetsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>qtmaind.lib;Qt5Cored.lib;Qt5Guid.lib;Qt5OpenGLd.lib;opengl32.lib;glu32.lib;Qt5SerialPortd.lib;Qt5Widgetsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <QtMoc>
-      <Define>UNICODE;_UNICODE;WIN32;WIN64;QT_DLL;QT_CORE_LIB;QT_OPENGL_LIB;QT_SERIALPORT_LIB;QT_WIDGETS_LIB;GLAREA2_LIB;%(PreprocessorDefinitions)</Define>
-      <IncludePath>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtOpenGL;$(QTDIR)\include\QtSerialPort;$(QTDIR)\include\QtWidgets</IncludePath>
+      <Define>UNICODE;_UNICODE;WIN32;WIN64;GLAREA2_LIB;QT_CORE_LIB;QT_GUI_LIB;QT_OPENGL_LIB;QT_SERIALPORT_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</Define>
+      <IncludePath>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtOpenGL;$(QTDIR)\include\QtSerialPort;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</IncludePath>
       <OutputFile>.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</OutputFile>
       <ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription>
       <ForceInclude>stdafx.h;../../%(Filename)%(Extension)</ForceInclude>
@@ -88,8 +89,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_OPENGL_LIB;QT_SERIALPORT_LIB;QT_WIDGETS_LIB;GLAREA2_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtOpenGL;$(QTDIR)\include\QtSerialPort;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;WIN64;QT_NO_DEBUG;NDEBUG;GLAREA2_LIB;QT_CORE_LIB;QT_GUI_LIB;QT_OPENGL_LIB;QT_SERIALPORT_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtOpenGL;$(QTDIR)\include\QtSerialPort;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
@@ -102,11 +103,11 @@
       <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
       <AdditionalLibraryDirectories>$(QTDIR)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>assimp-vc140-mt.lib;assimp.lib;qtmain.lib;Qt5Core.lib;Qt5OpenGL.lib;opengl32.lib;glu32.lib;Qt5Widgets.lib;Qt5Gui.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>assimp-vc140-mt.lib;assimp.lib;qtmain.lib;Qt5Gui.lib;Qt5Core.lib;Qt5OpenGL.lib;opengl32.lib;glu32.lib;Qt5SerialPort.lib;Qt5Widgets.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <QtMoc>
-      <Define>UNICODE;_UNICODE;WIN32;WIN64;QT_DLL;QT_NO_DEBUG;NDEBUG;QT_CORE_LIB;QT_OPENGL_LIB;QT_SERIALPORT_LIB;QT_WIDGETS_LIB;GLAREA2_LIB;%(PreprocessorDefinitions)</Define>
-      <IncludePath>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtOpenGL;$(QTDIR)\include\QtSerialPort;$(QTDIR)\include\QtWidgets</IncludePath>
+      <Define>UNICODE;_UNICODE;WIN32;WIN64;QT_NO_DEBUG;NDEBUG;GLAREA2_LIB;QT_CORE_LIB;QT_GUI_LIB;QT_OPENGL_LIB;QT_SERIALPORT_LIB;QT_WIDGETS_LIB;%(PreprocessorDefinitions)</Define>
+      <IncludePath>.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtOpenGL;$(QTDIR)\include\QtSerialPort;$(QTDIR)\include\QtWidgets;%(AdditionalIncludeDirectories)</IncludePath>
       <OutputFile>.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</OutputFile>
       <ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription>
     </QtMoc>
@@ -140,16 +141,19 @@
     <None Include="gl.vs" />
     <None Include="gl2.fs" />
     <None Include="gl2.vs" />
+    <None Include="lightSpace.fs" />
+    <None Include="lightSpace.vs" />
+    <None Include="plane.fs" />
+    <None Include="plane.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
     <Import Project="$(QtMsBuild)\qt.targets" />
   </ImportGroup>
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties MocDir=".\GeneratedFiles\$(ConfigurationName)" UicDir=".\GeneratedFiles" RccDir=".\GeneratedFiles" lupdateOptions="" lupdateOnBuild="0" lreleaseOptions="" Qt5Version_x0020_x64="msvc2015_64" MocOptions="" />
+      <UserProperties MocDir=".\GeneratedFiles\$(ConfigurationName)" UicDir=".\GeneratedFiles" RccDir=".\GeneratedFiles" lupdateOptions="" lupdateOnBuild="0" lreleaseOptions="" Qt5Version_x0020_x64="msvc2017_64" MocOptions="" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>

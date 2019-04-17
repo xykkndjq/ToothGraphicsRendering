@@ -72,6 +72,9 @@ GLWidget::~GLWidget()
 {
     makeCurrent();
     vbo.destroy();
+	vboPlane.destroy();
+	vao.destroy();
+	vaoPlane.destroy();
     delete program;
     doneCurrent();
 }
@@ -90,8 +93,8 @@ void GLWidget::setWindowSize(QSize &size)
 {
 	SCR_WIDTH = size.width();
 	SCR_HEIGHT = size.height();
-	cout << "SCR_WIDTH = " << SCR_WIDTH << endl;
-	cout << "SCR_HEIGHT = " << SCR_HEIGHT << endl;
+	/*cout << "SCR_WIDTH = " << SCR_WIDTH << endl;
+	cout << "SCR_HEIGHT = " << SCR_HEIGHT << endl;*/
 }
 
 void GLWidget::rotateBy(int xAngle, int yAngle, int zAngle)
@@ -157,38 +160,139 @@ void GLWidget::initializeGL()
 {
     initializeOpenGLFunctions();
 	//createGeometry();
-    makeObject();
-
     glEnable(GL_DEPTH_TEST);
     //glEnable(GL_CULL_FACE);
 
 #define PROGRAM_VERTEX_ATTRIBUTE 0
 #define PROGRAM_NORMAL_ATTRIBUTE 1
 //#define PROGRAM_MATERIAL_ATTRIBUTE 2
-	
-    QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
-    vshader->compileSourceCode(ReadShader(":/gl2.vs"));
+	{
+		//牙齿shader
+		QOpenGLShader *vshader = new QOpenGLShader(QOpenGLShader::Vertex, this);
+		vshader->compileSourceCode(ReadShader(":/gl2.vs"));
+		QOpenGLShader *fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
+		fshader->compileSourceCode(ReadShader(":/gl2.fs"));
 
-    QOpenGLShader *fshader = new QOpenGLShader(QOpenGLShader::Fragment, this);
-    fshader->compileSourceCode(ReadShader(":/gl2.fs"));
+		program = new QOpenGLShaderProgram;
+		program->addShader(vshader);
+		program->addShader(fshader);
+		program->bindAttributeLocation("aPos", PROGRAM_VERTEX_ATTRIBUTE);
+		program->bindAttributeLocation("aNormal", PROGRAM_NORMAL_ATTRIBUTE);
+		makeObject();
+	}
+	{
+		//平面shader
+		QOpenGLShader *vs = new QOpenGLShader(QOpenGLShader::Vertex, this);
+		vs->compileSourceCode(ReadShader(":/plane.vs"));
+		QOpenGLShader *fs = new QOpenGLShader(QOpenGLShader::Fragment, this);
+		fs->compileSourceCode(ReadShader(":/plane.fs"));
 
-    program = new QOpenGLShaderProgram;
-    program->addShader(vshader);
-    program->addShader(fshader);
-    program->bindAttributeLocation("aPos", PROGRAM_VERTEX_ATTRIBUTE);
-    program->bindAttributeLocation("aNormal", PROGRAM_NORMAL_ATTRIBUTE);
-	//program->bindAttributeLocation("aMaterial", PROGRAM_MATERIAL_ATTRIBUTE);
-    program->link();
-    program->bind();
+		programPlane = new QOpenGLShaderProgram;
+		programPlane->addShader(vs);
+		programPlane->addShader(fs);
+		programPlane->bindAttributeLocation("aPos", PROGRAM_VERTEX_ATTRIBUTE);
+		programPlane->bindAttributeLocation("aNormal", PROGRAM_NORMAL_ATTRIBUTE);
+
+		float planeVertices[] = {
+			// positions            // normals         
+			 50.0, -4.0f,  50.0, 0.0f, 1.0f, 0.0f,
+			-50.0, -4.0f,  50.0, 0.0f, 1.0f, 0.0f,
+			-50.0, -4.0f, -50.0, 0.0f, 1.0f, 0.0f,
+
+			 50.0, -4.0f,  50.0, 0.0f, 1.0f, 0.0f,
+			-50.0, -4.0f, -50.0, 0.0f, 1.0f, 0.0f,
+			 50.0, -4.0f, -50.0, 0.0f, 1.0f, 0.0f,
+		};
+		vboPlane.create();
+		vboPlane.bind();
+		vboPlane.setUsagePattern(QOpenGLBuffer::StaticDraw);
+		vboPlane.allocate(planeVertices, sizeof(planeVertices));
+
+		vaoPlane.create();
+		vaoPlane.bind();
+		programPlane->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
+		programPlane->enableAttributeArray(PROGRAM_NORMAL_ATTRIBUTE);
+		programPlane->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 3, 6 * sizeof(GLfloat));
+		programPlane->setAttributeBuffer(PROGRAM_NORMAL_ATTRIBUTE, GL_FLOAT, 3 * sizeof(GLfloat), 3, 6 * sizeof(GLfloat));
+
+		programPlane->link();
+		programPlane->bind();
+		vaoPlane.release();
+	}
+	{
+		QOpenGLShader *vsLight = new QOpenGLShader(QOpenGLShader::Vertex, this);
+		vsLight->compileSourceCode(ReadShader(":/lightSpace.vs"));
+		QOpenGLShader *fsLight = new QOpenGLShader(QOpenGLShader::Fragment, this);
+		fsLight->compileSourceCode(ReadShader(":/lightSpace.fs"));
+		programLightSpace = new QOpenGLShaderProgram;
+		programLightSpace->addShader(vsLight);
+		programLightSpace->addShader(fsLight);
+		programLightSpace->link();
+		programLightSpace->bind();
+	}
+	setClearColor(QColor(187, 255, 255));
+	//setClearColor(QColor(255, 255, 255));
+	glGenFramebuffers(1, &depthMapFBO);
+	const GLuint SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+
+	glGenTextures(1, &depthMap);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void GLWidget::paintGL()
 {
+	
     glClearColor(clearColor.redF(), clearColor.greenF(), clearColor.blueF(), clearColor.alphaF());
 	//cout << clearColor.redF() << " ;" << clearColor.greenF() << " ;" << clearColor.blueF() << " ;" << endl;
 	//glClearColor()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//求光投影空间
+	QVector3D lightPos(QVector3D(0, 50, 10));
+	QMatrix4x4 lightProjection, lightView, lightSpaceMatrix;
+	QMatrix4x4 modelLight;
+	modelLight.setToIdentity();
+	/*modelLight.rotate(xRot / 16.0f, 1.0f, 0.0f, 0.0f);
+	modelLight.rotate(yRot / 16.0f, 0.0f, 1.0f, 0.0f);
+	modelLight.rotate(zRot / 16.0f, 0.0f, 0.0f, 1.0f);*/
+	float near_plane = 1.0f, far_plane = 200.0f;
+	lightProjection.ortho(-100.0f, 100.0f, -100.0f, 100.0f, near_plane, far_plane);
+	lightView.lookAt(lightPos, QVector3D(0.0f, -10.0f, 0.0f), QVector3D(0.0, 1.0, 0.0));
+	lightSpaceMatrix = lightProjection * lightView * modelLight;
+	programLightSpace->bind();
+	programLightSpace->setUniformValue("lightSpaceMatrix", lightSpaceMatrix);
+	//programLightSpace->setUniformValue("model", modelLight);
+	//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+	//简单绘制物体，得到深度纹理
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	programLightSpace->bindAttributeLocation("aPos", 0);
+	programLightSpace->enableAttributeArray(0);
+	programLightSpace->setAttributeBuffer(0, GL_FLOAT, 0, 3, 7 * sizeof(GLfloat));
+	vao.bind();
+	glDrawArrays(GL_TRIANGLES, 0, vertices_in.size() / 3);
+	vao.release();
+	/*programLightSpace->enableAttributeArray(0);
+	programLightSpace->setAttributeBuffer(0, GL_FLOAT, 0, 3, 6 * sizeof(GLfloat));
+	vaoPlane.bind();
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	vaoPlane.release();*/
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	//正常渲染
+	program->bind();
     //QMatrix4x4 m;
     //m.ortho(-5.0f, +5.0f, +5.0f, -5.0f, -5.0f, 35.0f);
     //m.translate(0.0f, 0.0f, -10.0f);
@@ -208,7 +312,10 @@ void GLWidget::paintGL()
 	//cout << endl;
 
 	view.setToIdentity();
-	view.translate(0.0f, 0.0f, -230.0f);
+	view.translate(0.0f, -10.0f, -230.0f);
+	view.rotate(xRot / 16.0f, 1.0f, 0.0f, 0.0f);
+	view.rotate(yRot / 16.0f, 0.0f, 1.0f, 0.0f);
+	view.rotate(zRot / 16.0f, 0.0f, 0.0f, 1.0f);
 	//view.rotate(xRot / 16.0f, 1.0f, 0.0f, 0.0f);
 	//view.rotate(yRot / 16.0f, 0.0f, 1.0f, 0.0f);
 	//view.rotate(zRot / 16.0f, 0.0f, 0.0f, 1.0f);
@@ -221,12 +328,6 @@ void GLWidget::paintGL()
 	//cout << endl;
 
 	model.setToIdentity();
-	model.rotate(xRot / 16.0f, 1.0f, 0.0f, 0.0f);
-	model.rotate(yRot / 16.0f, 0.0f, 1.0f, 0.0f);
-	model.rotate(zRot / 16.0f, 0.0f, 0.0f, 1.0f);
-	//model.translate(xRot, yRot, zRot);
-	program->setUniformValue("model", model);
-	program->setUniformValue("inv_model", model.inverted());
 	//cout << model.data()[0] << ", " << model.data()[4] << ", " << model.data()[8] << ", " << model.data()[12] << endl;
 	//cout << model.data()[1] << ", " << model.data()[5] << ", " << model.data()[9] << ", " << model.data()[13] << endl;
 	//cout << model.data()[2] << ", " << model.data()[6] << ", " << model.data()[10] << ", " << model.data()[14] << endl;
@@ -262,21 +363,58 @@ void GLWidget::paintGL()
 	//	a2[3] += projection.column(i).w() *a1[i];
 	//	
 	//}
+	//cout << a2[0] << ", " << a2[1] << ", " << a2[2] << ", " << a2[3] << endl;cout << "-----------------------------" << endl;//cout << model.data()[0] << ", " << model.data()[4] << ", " << model.data()[8] << ", " << model.data()[12] << endl;
+	//cout << model.data()[1] << ", " << model.data()[5] << ", " << model.data()[9] << ", " << model.data()[13] << endl;
+	//cout << model.data()[2] << ", " << model.data()[6] << ", " << model.data()[10] << ", " << model.data()[14] << endl;
+	//cout << model.data()[3] << ", " << model.data()[7] << ", " << model.data()[11] << ", " << model.data()[15] << endl;
+	//cout << endl;
+	//vector<float> a(4,0);
+	//cout << a[0] << ", " << a[1] << ", " << a[2] << ", " << a[3] << endl;
+	//for (int i = 0; i < 4; i++)
+	//{
+	//	for (int j = 0; j < 4; j++)
+	//	{
+	//		a[j] += model.data()[j + 4 * i] * fv[i];
+	//	}
+	//}
+	//cout << a[0] << ", " << a[1] << ", " << a[2] << ", " << a[3] << endl;
+	//cout << "-----------------------------" << endl;
+	//vector<float> a1(4, 0);
+	//for (int i = 0; i < 4; i++)
+	//{
+	//	a1[0] += view.column(i).x()*a[i];
+	//	a1[1] += view.column(i).y()*a[i];
+	//	a1[2] += view.column(i).z()*a[i];
+	//	a1[3] += view.column(i).w()*a[i];
+	//	
+	//}
+	//cout << a1[0] << ", " << a1[1] << ", " << a1[2] << ", " << a1[3] << endl;cout << "-----------------------------" << endl;
+	//vector<float> a2(4, 0);
+	//for (int i = 0; i < 4; i++)
+	//{
+	//	a2[0] += projection.column(i).x() *a1[i];
+	//	a2[1] += projection.column(i).y() *a1[i];
+	//	a2[2] += projection.column(i).z() *a1[i];
+	//	a2[3] += projection.column(i).w() *a1[i];
+	//	
+	//}
 	//cout << a2[0] << ", " << a2[1] << ", " << a2[2] << ", " << a2[3] << endl;cout << "-----------------------------" << endl;
-	program->setUniformValue("lightPos", QVector3D(0, 0, 0));
+	//model.translate(xRot, yRot, zRot);
+	program->setUniformValue("model", model);
+	program->setUniformValue("lightPos", lightPos);
 	//cout << view.column(3).toVector3D()[0] <<", " << view.column(3).toVector3D()[1] << ", " << view.column(3).toVector3D()[2]<< endl;
-	program->setUniformValue("lightColor", QVector3D(1.0f, 1.0f, 1.0f));
+	program->setUniformValue("lightColor", QVector3D(0.7f,0.7f, 0.7f));
 	program->setUniformValue("objectColor", QVector3D(1.2f, 0.7f, 0.71f));
 	//program->setUniformValue("gingivaColor", QVector3D(1.3f, 1.3f, 1.3f));
 	//program->setUniformValue("teethColor", QVector3D(1.3f, 1.3f, 1.3f));
 	
-	program->setUniformValue("material1.ambient", 0.05f,0.0f,0.0f);
-	program->setUniformValue("material1.diffuse", 0.5f,0.4f,0.4f);
+	program->setUniformValue("material1.ambient", 0.6f, 0.0f, 0.0f);
+	program->setUniformValue("material1.diffuse", 1.0f, 0.756863f, 0.756863f);
 	program->setUniformValue("material1.specular", 0.8f,0.04f,0.04f);
-	program->setUniformValue("material1.shininess", 0.978125f);
+	program->setUniformValue("material1.shininess", 0.978125f);//0.978125f
 
-	program->setUniformValue("material2.ambient", 0.95f,0.95f,0.95f);
-	program->setUniformValue("material2.diffuse", 0.6f,	0.6f,0.6f);
+	program->setUniformValue("material2.ambient", 1.2f,1.2f,1.2f);
+	program->setUniformValue("material2.diffuse", 1.0f,	1.0f,1.0f);
 	program->setUniformValue("material2.specular", 1.2f, 1.2f, 1.2f);
 	program->setUniformValue("material2.shininess", 32.0f);
 
@@ -285,58 +423,98 @@ void GLWidget::paintGL()
 	program->setUniformValue("dirLight.ambient", 0.45f, 0.45f, 0.45f);
 	program->setUniformValue("dirLight.diffuse", 0.6f, 0.6f, 0.6f);
 	program->setUniformValue("dirLight.specular", 0.7f, 0.7f, 0.7f);
-	// point light 1
-	program->setUniformValue("pointLights[0].position", 0.7f, 0.2f, 2.0f);
-	program->setUniformValue("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
-	program->setUniformValue("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
-	program->setUniformValue("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
-	program->setUniformValue("pointLights[0].constant", 1.0f);
-	program->setUniformValue("pointLights[0].linear", 0.09f);
-	program->setUniformValue("pointLights[0].quadratic", 0.032f);
-	// point light 2
-	program->setUniformValue("pointLights[1].position", 2.3f, -3.3f, -4.0f);
-	program->setUniformValue("pointLights[1].ambient", 0.05f, 0.05f, 0.05f);
-	program->setUniformValue("pointLights[1].diffuse", 0.8f, 0.8f, 0.8f);
-	program->setUniformValue("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
-	program->setUniformValue("pointLights[1].constant", 1.0f);
-	program->setUniformValue("pointLights[1].linear", 0.09f);
-	program->setUniformValue("pointLights[1].quadratic", 0.032f);
-	// point light 3
-	program->setUniformValue("pointLights[2].position", -4.0f, 2.0f, -12.0f);
-	program->setUniformValue("pointLights[2].ambient", 0.05f, 0.05f, 0.05f);
-	program->setUniformValue("pointLights[2].diffuse", 0.8f, 0.8f, 0.8f);
-	program->setUniformValue("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
-	program->setUniformValue("pointLights[2].constant", 1.0f);
-	program->setUniformValue("pointLights[2].linear", 0.09f);
-	program->setUniformValue("pointLights[2].quadratic", 0.032f);
-	// point light 4
-	program->setUniformValue("pointLights[3].position", 0.0f, 0.0f, -3.0f);
-	program->setUniformValue("pointLights[3].ambient", 0.05f, 0.05f, 0.05f);
-	program->setUniformValue("pointLights[3].diffuse", 0.8f, 0.8f, 0.8f);
-	program->setUniformValue("pointLights[3].specular", 1.0f, 1.0f, 1.0f);
-	program->setUniformValue("pointLights[3].constant", 1.0f);
-	program->setUniformValue("pointLights[3].linear", 0.09f);
-	program->setUniformValue("pointLights[3].quadratic", 0.032f);
-	// spotLight
-	program->setUniformValue("spotLight.position", 0.0f, 0.0f, 0.0f);
-	program->setUniformValue("spotLight.direction", 0.0f, 0.0f, 1.0f);
-	program->setUniformValue("spotLight.ambient", 0.0f, 0.0f, 0.0f);
-	program->setUniformValue("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
-	program->setUniformValue("spotLight.specular", 1.0f, 1.0f, 1.0f);
-	program->setUniformValue("spotLight.constant", 1.0f);;
-	program->setUniformValue("spotLight.linear", 0.09f);
-	program->setUniformValue("spotLight.quadratic", 0.032f);
-	program->setUniformValue("spotLight.cutOff", float(cos(0.2094)));
-	program->setUniformValue("spotLight.outerCutOff", float(cos(0.2618)));
+	//// point light 1
+	//program->setUniformValue("pointLights[0].position", 0.7f, 0.2f, 2.0f);
+	//program->setUniformValue("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
+	//program->setUniformValue("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
+	//program->setUniformValue("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+	//program->setUniformValue("pointLights[0].constant", 1.0f);
+	//program->setUniformValue("pointLights[0].linear", 0.09f);
+	//program->setUniformValue("pointLights[0].quadratic", 0.032f);
+	//// point light 2
+	//program->setUniformValue("pointLights[1].position", 2.3f, -3.3f, -4.0f);
+	//program->setUniformValue("pointLights[1].ambient", 0.05f, 0.05f, 0.05f);
+	//program->setUniformValue("pointLights[1].diffuse", 0.8f, 0.8f, 0.8f);
+	//program->setUniformValue("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
+	//program->setUniformValue("pointLights[1].constant", 1.0f);
+	//program->setUniformValue("pointLights[1].linear", 0.09f);
+	//program->setUniformValue("pointLights[1].quadratic", 0.032f);
+	//// point light 3
+	//program->setUniformValue("pointLights[2].position", -4.0f, 2.0f, -12.0f);
+	//program->setUniformValue("pointLights[2].ambient", 0.05f, 0.05f, 0.05f);
+	//program->setUniformValue("pointLights[2].diffuse", 0.8f, 0.8f, 0.8f);
+	//program->setUniformValue("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
+	//program->setUniformValue("pointLights[2].constant", 1.0f);
+	//program->setUniformValue("pointLights[2].linear", 0.09f);
+	//program->setUniformValue("pointLights[2].quadratic", 0.032f);
+	//// point light 4
+	//program->setUniformValue("pointLights[3].position", 0.0f, 0.0f, -3.0f);
+	//program->setUniformValue("pointLights[3].ambient", 0.05f, 0.05f, 0.05f);
+	//program->setUniformValue("pointLights[3].diffuse", 0.8f, 0.8f, 0.8f);
+	//program->setUniformValue("pointLights[3].specular", 1.0f, 1.0f, 1.0f);
+	//program->setUniformValue("pointLights[3].constant", 1.0f);
+	//program->setUniformValue("pointLights[3].linear", 0.09f);
+	//program->setUniformValue("pointLights[3].quadratic", 0.032f);
+	//// spotLight
+	//program->setUniformValue("spotLight.position", 0.0f, 5.0f, 20.0f);
+	//program->setUniformValue("spotLight.direction", 0.0f, -1.0f, .0f);
+	//program->setUniformValue("spotLight.ambient", 1.0f, 1.0f, 1.0f);
+	//program->setUniformValue("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+	//program->setUniformValue("spotLight.specular", 1.0f, 1.0f, 1.0f);
+	//program->setUniformValue("spotLight.constant", 1.0f);;
+	//program->setUniformValue("spotLight.linear", 0.045f);
+	//program->setUniformValue("spotLight.quadratic", 0.0075f);
+	//program->setUniformValue("spotLight.cutOff", float(cos(17.5)));
+	//program->setUniformValue("spotLight.outerCutOff", float(cos(20)));
+ //   program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
+ //   program->enableAttributeArray(PROGRAM_NORMAL_ATTRIBUTE);
+	////program->enableAttributeArray(PROGRAM_MATERIAL_ATTRIBUTE);
+ //   program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 4, 7 * sizeof(GLfloat));
+ //   program->setAttributeBuffer(PROGRAM_NORMAL_ATTRIBUTE, GL_FLOAT, 4 * sizeof(GLfloat), 3, 7 * sizeof(GLfloat));
+	////program->setAttributeBuffer(PROGRAM_MATERIAL_ATTRIBUTE, GL_FLOAT, 0, 1, 7 * sizeof(GLfloat));
 
-    program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
-    program->enableAttributeArray(PROGRAM_NORMAL_ATTRIBUTE);
-	//program->enableAttributeArray(PROGRAM_MATERIAL_ATTRIBUTE);
-    program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 4, 7 * sizeof(GLfloat));
-    program->setAttributeBuffer(PROGRAM_NORMAL_ATTRIBUTE, GL_FLOAT, 4 * sizeof(GLfloat), 3, 7 * sizeof(GLfloat));
-	//program->setAttributeBuffer(PROGRAM_MATERIAL_ATTRIBUTE, GL_FLOAT, 0, 1, 7 * sizeof(GLfloat));
-
+	//激活深度纹理，将其绘制在平面上
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	vao.bind();
 	glDrawArrays(GL_TRIANGLES, 0, vertices_in.size()/3);
+	vao.release();
+	//计算当前视点方向与平面法向量的点积，当点积为负时不绘制平面
+	QVector3D planeNormal(0.0f, 1.0f, 0.0f);
+	planeNormal = (view * model.inverted().transposed() * planeNormal).normalized();
+	//std::cout << planeNormal.x() << "," << planeNormal.y() << "," << planeNormal.z() << std::endl;
+	QVector3D viewPos(view.column(3).x(), view.column(3).y(), view.column(3).z());
+	/*std::cout << view.column(3).x() << "," << view.column(3).y() << "," << view.column(3).z() << std::endl;
+	std::cout << view.column(3).x() << "," << view.column(3).y() << "," << view.column(3).z() << "," << view.column(3).w() << std::endl;*/
+	QVector3D planeCenter(0.0f, -4.0f, 0.0f);
+	planeCenter = view * model * planeCenter;
+	//std::cout << planeCenter.x() << "," << planeCenter.y() << "," << planeCenter.z() << std::endl;
+	QVector3D viewDir;
+	viewDir = (planeCenter - viewPos).normalized();
+	//std::cout << viewDir.x() << "," << viewDir.y() << "," << viewDir.z() << std::endl;
+	float dotValue = QVector3D::dotProduct(planeNormal, viewDir);
+	//std::cout << dotValue << std::endl;
+	if (dotValue >= 0) {
+		programPlane->bind();
+		programPlane->setUniformValue("projection", projection);
+		programPlane->setUniformValue("view", view);
+		programPlane->setUniformValue("model", model);
+		programPlane->setUniformValue("lightPos", lightPos);
+		programPlane->setUniformValue("viewPos", view.column(3));
+		//programPlane->setUniformValue("inv_model", model.inverted());
+		programPlane->setUniformValue("color", QVector3D(clearColor.redF(), clearColor.greenF(), clearColor.blueF()));
+		programPlane->setUniformValue("lightSpaceMatrix", lightSpaceMatrix);
+		programPlane->setUniformValue("shadowMap", 0);
+		//programPlane->setUniformValue("color", QVector3D(0.733f, 1, 1));
+		programPlane->setUniformValue("alpha", 0.4f);
+
+		//glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		vaoPlane.bind();
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		//glDisable(GL_BLEND);
+		vaoPlane.release();
+	}
 }
 
 void GLWidget::resizeGL(int width, int height)
@@ -489,7 +667,19 @@ void GLWidget::makeObject()
 
     vbo.create();
     vbo.bind();
+	vbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
     vbo.allocate(vertData.constData(), vertData.count() * sizeof(GLfloat));
+
+	vao.create();
+	vao.bind();
+	program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
+	program->enableAttributeArray(PROGRAM_NORMAL_ATTRIBUTE);
+	program->setAttributeBuffer(PROGRAM_VERTEX_ATTRIBUTE, GL_FLOAT, 0, 4, 7 * sizeof(GLfloat));
+	program->setAttributeBuffer(PROGRAM_NORMAL_ATTRIBUTE, GL_FLOAT, 4 * sizeof(GLfloat), 3, 7 * sizeof(GLfloat));
+
+	program->link();
+	program->bind();
+	vao.release();
 }
 
 void GLWidget::createGeometry()

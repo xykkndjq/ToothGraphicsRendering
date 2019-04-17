@@ -76,5 +76,17 @@
     <None Include="gl2.vs">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="plane.fs">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="plane.vs">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="lightSpace.vs">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="lightSpace.fs">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

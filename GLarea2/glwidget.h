@@ -54,11 +54,15 @@
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QOpenGLBuffer>
+#include <QOpenGLVertexArrayObject>
+#include <QOpenGLTexture>
+#include <QOpenGLFramebufferObject>
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include "io.h"
+#include <GLFW/glfw3.h>
 using std::cout;
 using std::endl;
 
@@ -111,7 +115,14 @@ private:
 
 	//QOpenGLTexture *textures;
     QOpenGLShaderProgram *program;
+	QOpenGLShaderProgram *programPlane;
+	QOpenGLShaderProgram *programLightSpace;
     QOpenGLBuffer vbo;
+	QOpenGLBuffer vboPlane;
+	QOpenGLVertexArrayObject vao;
+	QOpenGLVertexArrayObject vaoPlane;
+	GLuint depthMapFBO;
+	GLuint depthMap;
 
 	vector<float> vertices_in;
 	vector<float> normal_in;

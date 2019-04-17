@@ -66,19 +66,20 @@ void main()
 // 属性
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
-    
+    vec3 result;
+
 // 第一阶段：定向光照
-    vec3 result = CalcDirLight(dirLight, -norm, viewDir);
+    result = CalcDirLight(dirLight, -norm, viewDir);
 
 // 第二阶段：点光源
    // for(int i = 0; i < NR_POINT_LIGHTS; i++)
        // result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);   
 		 
 // 第三阶段：聚光
-    //result += CalcSpotLight(spotLight, norm, FragPos, viewDir);  
+    //result = CalcSpotLight(spotLight, norm, FragPos, viewDir);  
 	
 	//result *= objectColor;  
-    
+    result.rgb = pow(result.rgb, vec3(1.0/2.2));
     gl_FragColor = vec4(result, 1.0);
 }
 
